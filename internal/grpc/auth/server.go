@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	ssov1 "github.com/kuromii5/proto-auth/gen/go/sso"
-	postgres "github.com/kuromii5/sso-auth/internal/db"
 	grpcauth "github.com/kuromii5/sso-auth/internal/services/grpcauth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -38,7 +37,7 @@ func (s *serverAPI) Register(ctx context.Context, req *ssov1.RegisterRequest) (*
 
 	userID, err := s.auth.RegisterNewUser(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
-		if errors.Is(err, postgres.ErrUserExists) {
+		if errors.Is(err, grpcauth.ErrUserExists) {
 			return nil, status.Error(codes.AlreadyExists, "user already exists")
 		}
 		return nil, status.Error(codes.Internal, "internal register error")
@@ -72,7 +71,7 @@ func (s *serverAPI) IsAdmin(ctx context.Context, req *ssov1.IsAdminRequest) (*ss
 
 	isAdmin, err := s.auth.IsAdmin(ctx, req.GetUserId())
 	if err != nil {
-		if errors.Is(err, postgres.ErrUserNotFound) {
+		if errors.Is(err, grpcauth.ErrUserNotFound) {
 			return nil, status.Error(codes.NotFound, "user not found")
 		}
 		return nil, status.Error(codes.Internal, "internal isAdmin error")
