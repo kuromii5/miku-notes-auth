@@ -1,0 +1,182 @@
+package handler
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"log/slog"
+	"runtime"
+	"strconv"
+	"sync"
+	"time"
+)
+
+const (
+	reset = "\033[0m"
+
+	black        = 30
+	red          = 31
+	green        = 32
+	yellow       = 33
+	blue         = 34
+	magenta      = 35
+	cyan         = 36
+	lightGray    = 37
+	darkGray     = 90
+	lightRed     = 91
+	lightGreen   = 92
+	lightYellow  = 93
+	lightBlue    = 94
+	lightMagenta = 95
+	lightCyan    = 96
+	white        = 97
+)
+
+// Color codes for different log levels
+var levelColors = map[slog.Level]int{
+	slog.LevelDebug: lightGray,
+	slog.LevelInfo:  lightGreen,
+	slog.LevelWarn:  lightYellow,
+	slog.LevelError: lightRed,
+}
+
+func colorize(colorCode int, v string) string {
+	return fmt.Sprintf("\033[%sm%s%s", strconv.Itoa(colorCode), v, reset)
+}
+
+type groupOrAttrs struct {
+	group string      // group name if non-empty
+	attrs []slog.Attr // attrs if non-empty
+}
+
+type PrettyHandler struct {
+	lev  slog.Leveler
+	goas []groupOrAttrs
+	mu   *sync.Mutex
+	out  io.Writer
+}
+
+func New(out io.Writer, l *slog.Level) *PrettyHandler {
+	h := &PrettyHandler{out: out, mu: &sync.Mutex{}}
+	if l != nil {
+		h.lev = *l
+	}
+	if h.lev == nil {
+		h.lev = slog.LevelInfo
+	}
+	return h
+}
+
+func (h *PrettyHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return level >= h.lev.Level()
+}
+
+func (h *PrettyHandler) Handle(ctx context.Context, r slog.Record) error {
+	buf := make([]byte, 0, 1024)
+	if !r.Time.IsZero() {
+		buf = h.appendAttr(buf, slog.Time(slog.TimeKey, r.Time), 0)
+	}
+	buf = h.appendAttr(buf, slog.Any(slog.LevelKey, r.Level), 0)
+	if r.PC != 0 {
+		fs := runtime.CallersFrames([]uintptr{r.PC})
+		f, _ := fs.Next()
+		buf = h.appendAttr(buf, slog.String(slog.SourceKey, fmt.Sprintf("%s:%d", f.File, f.Line)), 0)
+	}
+	buf = h.appendAttr(buf, slog.String(slog.MessageKey, r.Message), 0)
+	indentLevel := 0
+	// Handle state from WithGroup and WithAttrs.
+	goas := h.goas
+	if r.NumAttrs() == 0 {
+		// If the record has no Attrs, remove groups at the end of the list; they are empty.
+		for len(goas) > 0 && goas[len(goas)-1].group != "" {
+			goas = goas[:len(goas)-1]
+		}
+	}
+	for _, goa := range goas {
+		if goa.group != "" {
+			buf = fmt.Appendf(buf, "%*s%s:\n", indentLevel*4, "", goa.group)
+			indentLevel++
+		} else {
+			for _, a := range goa.attrs {
+				buf = h.appendAttr(buf, a, indentLevel)
+			}
+		}
+	}
+	r.Attrs(func(a slog.Attr) bool {
+		buf = h.appendAttr(buf, a, indentLevel)
+		return true
+	})
+
+	// Colorize based on log level
+	colorCode, ok := levelColors[r.Level]
+	if ok {
+		buf = []byte(colorize(colorCode, string(buf)))
+	}
+
+	buf = append(buf, "---\n"...)
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	_, err := h.out.Write(buf)
+	return err
+}
+
+func (h *PrettyHandler) appendAttr(buf []byte, a slog.Attr, indentLevel int) []byte {
+	// Resolve the Attr's value before doing anything else.
+	a.Value = a.Value.Resolve()
+	// Ignore empty Attrs.
+	if a.Equal(slog.Attr{}) {
+		return buf
+	}
+	// Indent 4 spaces per level.
+	buf = fmt.Appendf(buf, "%*s", indentLevel*4, "")
+	switch a.Value.Kind() {
+	case slog.KindString:
+		// Quote string values, to make them easy to parse.
+		buf = fmt.Appendf(buf, "%s: %q\n", a.Key, a.Value.String())
+	case slog.KindTime:
+		// Write times in a standard way, without the monotonic time.
+		loc := time.FixedZone("UTC+3", 3*60*60)
+		t := a.Value.Time().In(loc)
+		buf = fmt.Appendf(buf, "%s: %s\n", a.Key, t.Format("2006-01-02 15:04:05"))
+	case slog.KindGroup:
+		attrs := a.Value.Group()
+		// Ignore empty groups.
+		if len(attrs) == 0 {
+			return buf
+		}
+		// If the key is non-empty, write it out and indent the rest of the attrs.
+		// Otherwise, inline the attrs.
+		if a.Key != "" {
+			buf = fmt.Appendf(buf, "%s:\n", a.Key)
+			indentLevel++
+		}
+		for _, ga := range attrs {
+			buf = h.appendAttr(buf, ga, indentLevel)
+		}
+	default:
+		buf = fmt.Appendf(buf, "%s: %s\n", a.Key, a.Value)
+	}
+	return buf
+}
+
+func (h *PrettyHandler) withGroupOrAttrs(goa groupOrAttrs) *PrettyHandler {
+	hNew := *h
+	hNew.goas = make([]groupOrAttrs, len(h.goas)+1)
+	copy(hNew.goas, h.goas)
+	hNew.goas[len(hNew.goas)-1] = goa
+	return &hNew
+}
+
+func (h *PrettyHandler) WithGroup(name string) slog.Handler {
+	if name == "" {
+		return h
+	}
+	return h.withGroupOrAttrs(groupOrAttrs{group: name})
+}
+
+func (h *PrettyHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	if len(attrs) == 0 {
+		return h
+	}
+	return h.withGroupOrAttrs(groupOrAttrs{attrs: attrs})
+}
