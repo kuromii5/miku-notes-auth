@@ -37,7 +37,6 @@ type UserProvider interface {
 	IsAdmin(ctx context.Context, userID int64) (bool, error)
 }
 
-// New returns new instance of auth service
 func New(
 	log *slog.Logger,
 	userSaver UserSaver,

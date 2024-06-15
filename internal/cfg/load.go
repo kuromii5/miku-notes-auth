@@ -9,6 +9,8 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
+// TokenTTL - Token time-to-live
+
 type Config struct {
 	Env        string        `yaml:"env" env-default:"local"`
 	Postgres   PostgresCfg   `yaml:"postgres"`

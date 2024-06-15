@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// ssov1.AuthServer
 type serverAPI struct {
 	ssov1.UnimplementedAuthServer
 	validate *validator.Validate
@@ -19,8 +20,8 @@ type serverAPI struct {
 }
 
 type Auth interface {
-	Login(ctx context.Context, email string, password string) (token string, err error)
-	RegisterNewUser(ctx context.Context, email string, password string) (userID int64, err error)
+	Login(ctx context.Context, email string, password string) (string, error)
+	RegisterNewUser(ctx context.Context, email string, password string) (int64, error)
 	IsAdmin(ctx context.Context, userID int64) (bool, error)
 }
 

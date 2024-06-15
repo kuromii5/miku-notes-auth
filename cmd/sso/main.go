@@ -18,19 +18,25 @@ const (
 )
 
 func main() {
+	// read config file
 	cfg := config.MustLoad()
+
+	// make connection string to postgres
 	connStr := cfg.Postgres.ConnString()
 
+	// setup logger for logs
 	log := setupLogger(cfg.Env)
 	log.Info("Starting application", slog.Any("config", cfg))
 
+	// initialize application
 	app := app.New(log, cfg.GRPC.Port, connStr, cfg.JWT_SECRET, cfg.TokenTTL)
 
+	// run the server as goroutine
 	go app.Server.MustRun()
 
 	// graceful shutdown
 	shutdown := make(chan os.Signal, 1)
-	signal.Notify(shutdown, syscall.SIGTERM, syscall.SIGINT)
+	signal.Notify(shutdown, syscall.SIGTERM, syscall.SIGINT) // terminate, interrupt
 	s := <-shutdown
 	log.Info("shutdown", slog.String("signal", s.String()))
 
@@ -38,6 +44,7 @@ func main() {
 	log.Info("Server is stopped")
 }
 
+// TODO: refactor this func
 func setupLogger(env string) *slog.Logger {
 	var h *handler.PrettyHandler
 	var levelDebug slog.Level = -4

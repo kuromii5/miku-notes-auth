@@ -1,13 +1,13 @@
 env: "local" #dev, prod
 postgres:
   user: "postgres"
-  password: "admin"
+  password: "admin" # sensitive
   host: "localhost"
   port: 5432
-  dbname: "sso"
+  dbname: "sso" # sensitive
   sslmode: "disable"
 token_ttl: 1h
-secret: "watafuk"
+secret: "watafuk" # sensitive
 grpc:
   port: 44044
   timeout: 10h
