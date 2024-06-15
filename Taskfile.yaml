@@ -1,0 +1,10 @@
+version: '3'
+
+tasks:  
+  default:
+    cmds:  
+      - task: run 
+  run: 
+    desc: "Run application with defined config"  
+    cmds:
+      - go run cmd/sso/main.go --config="./config/local.yaml"

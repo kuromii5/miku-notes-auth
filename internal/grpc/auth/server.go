@@ -36,7 +36,7 @@ func (s *serverAPI) Register(ctx context.Context, req *ssov1.RegisterRequest) (*
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	userID, err := s.auth.RegisterNewUser(ctx, req.GetEmail(), req.GetPassword())
+	_, err = s.auth.RegisterNewUser(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
 		if errors.Is(err, grpcauth.ErrUserExists) {
 			return nil, status.Error(codes.AlreadyExists, "user already exists")
@@ -44,7 +44,16 @@ func (s *serverAPI) Register(ctx context.Context, req *ssov1.RegisterRequest) (*
 		return nil, status.Error(codes.Internal, "internal register error")
 	}
 
-	return &ssov1.RegisterResponse{UserId: userID}, nil
+	// automatically log in after register
+	token, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
+	if err != nil {
+		if errors.Is(err, grpcauth.ErrInvalidCreds) {
+			return nil, status.Error(codes.InvalidArgument, "invalid credentials")
+		}
+		return nil, status.Error(codes.Internal, "internal login error")
+	}
+
+	return &ssov1.RegisterResponse{Token: token}, nil
 }
 
 func (s *serverAPI) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.LoginResponse, error) {
