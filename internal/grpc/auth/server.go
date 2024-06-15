@@ -9,6 +9,7 @@ import (
 	grpcauth "github.com/kuromii5/sso-auth/internal/services/grpcauth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -70,7 +71,11 @@ func (s *serverAPI) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.
 		return nil, status.Error(codes.Internal, "internal login error")
 	}
 
-	return &ssov1.LoginResponse{Token: token}, nil
+	// Set the JWT token in the metadata
+	md := metadata.Pairs("authorization", "Bearer "+token)
+	grpc.SetHeader(ctx, md)
+
+	return &ssov1.LoginResponse{}, nil
 }
 
 func (s *serverAPI) IsAdmin(ctx context.Context, req *ssov1.IsAdminRequest) (*ssov1.IsAdminResponse, error) {
