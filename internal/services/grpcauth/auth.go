@@ -34,7 +34,6 @@ type UserSaver interface {
 
 type UserProvider interface {
 	User(ctx context.Context, email string) (models.User, error)
-	IsAdmin(ctx context.Context, userID int64) (bool, error)
 }
 
 func New(
@@ -66,6 +65,7 @@ func (a *Auth) RegisterNewUser(
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Error("failed to generate password", l.Err(err))
+
 		return 0, fmt.Errorf("%s:%v", f, err)
 	}
 
@@ -75,6 +75,7 @@ func (a *Auth) RegisterNewUser(
 			a.log.Warn("user already exists", l.Err(err))
 			return 0, fmt.Errorf("%s:%w", f, ErrUserExists)
 		}
+
 		log.Error("failed to save user", l.Err(err))
 		return 0, fmt.Errorf("%s:%v", f, err)
 	}
@@ -107,36 +108,18 @@ func (a *Auth) Login(
 
 	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password)); err != nil {
 		a.log.Warn("invalid credentials", l.Err(err))
+
 		return "", fmt.Errorf("%s:%w", f, ErrInvalidCreds)
 	}
 
 	token, err := jwt.NewJWT(user, a.tokenTTL, a.secret)
 	if err != nil {
 		a.log.Error("failed to generate jwt", l.Err(err))
+
 		return "", fmt.Errorf("%s:%w", f, err)
 	}
 
 	log.Info("user logged in successfully")
 
 	return token, nil
-}
-
-func (a *Auth) IsAdmin(ctx context.Context, uid int64) (bool, error) {
-	const f = "auth.IsAdmin"
-
-	log := a.log.With(slog.Int64("user_id", uid))
-	log.Info("checking if user is admin")
-
-	isAdmin, err := a.userProvider.IsAdmin(ctx, uid)
-	if err != nil {
-		if errors.Is(err, postgres.ErrUserNotFound) {
-			a.log.Warn("user not found", l.Err(err))
-			return false, fmt.Errorf("%s:%w", f, ErrInvalidCreds)
-		}
-		return false, fmt.Errorf("%s:%w", f, err)
-	}
-
-	log.Info("successful if user is admin check", slog.Bool("is_admin", isAdmin))
-
-	return isAdmin, nil
 }

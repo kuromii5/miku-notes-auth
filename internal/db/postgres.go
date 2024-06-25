@@ -49,6 +49,7 @@ func (d *DB) SaveUser(ctx context.Context, email string, passwordHash []byte) (i
 				return 0, fmt.Errorf("%s: %w", f, ErrUserExists)
 			}
 		}
+
 		return 0, fmt.Errorf("%s: %w", f, err)
 	}
 
@@ -58,10 +59,11 @@ func (d *DB) SaveUser(ctx context.Context, email string, passwordHash []byte) (i
 func (d *DB) User(ctx context.Context, email string) (models.User, error) {
 	const f = "postgres.User"
 
-	query := "SELECT id, email, pass_hash FROM users WHERE email = $1"
+	query := "SELECT id, email, pass_hash, created_at, updated_at FROM users WHERE email = $1"
 
 	var user models.User
-	err := d.db.QueryRowContext(ctx, query, email).Scan(&user.ID, &user.Email, &user.PasswordHash)
+	err := d.db.QueryRowContext(ctx, query, email).
+		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return models.User{}, fmt.Errorf("%s: %w", f, ErrUserNotFound)
@@ -71,22 +73,4 @@ func (d *DB) User(ctx context.Context, email string) (models.User, error) {
 	}
 
 	return user, nil
-}
-
-func (d *DB) IsAdmin(ctx context.Context, userID int64) (bool, error) {
-	const f = "postgres.IsAdmin"
-
-	query := "SELECT is_admin FROM users WHERE id = $1"
-
-	var isAdmin bool
-	err := d.db.QueryRowContext(ctx, query, userID).Scan(&isAdmin)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, fmt.Errorf("%s: %w", f, ErrUserNotFound)
-		}
-
-		return false, fmt.Errorf("%s: %w", f, err)
-	}
-
-	return isAdmin, nil
 }

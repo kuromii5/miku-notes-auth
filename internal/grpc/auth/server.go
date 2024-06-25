@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// ssov1.AuthServer
 type serverAPI struct {
 	ssov1.UnimplementedAuthServer
 	validate *validator.Validate
@@ -23,7 +22,6 @@ type serverAPI struct {
 type Auth interface {
 	Login(ctx context.Context, email string, password string) (string, error)
 	RegisterNewUser(ctx context.Context, email string, password string) (int64, error)
-	IsAdmin(ctx context.Context, userID int64) (bool, error)
 }
 
 func Register(gRPC *grpc.Server, auth Auth) {
@@ -32,7 +30,7 @@ func Register(gRPC *grpc.Server, auth Auth) {
 }
 
 func (s *serverAPI) Register(ctx context.Context, req *ssov1.RegisterRequest) (*ssov1.RegisterResponse, error) {
-	_, err := s.validateRegisterRequest(req)
+	err := s.validateRegisterRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -42,6 +40,7 @@ func (s *serverAPI) Register(ctx context.Context, req *ssov1.RegisterRequest) (*
 		if errors.Is(err, grpcauth.ErrUserExists) {
 			return nil, status.Error(codes.AlreadyExists, "user already exists")
 		}
+
 		return nil, status.Error(codes.Internal, "internal register error")
 	}
 
@@ -51,6 +50,7 @@ func (s *serverAPI) Register(ctx context.Context, req *ssov1.RegisterRequest) (*
 		if errors.Is(err, grpcauth.ErrInvalidCreds) {
 			return nil, status.Error(codes.InvalidArgument, "invalid credentials")
 		}
+
 		return nil, status.Error(codes.Internal, "internal login error")
 	}
 
@@ -58,7 +58,7 @@ func (s *serverAPI) Register(ctx context.Context, req *ssov1.RegisterRequest) (*
 }
 
 func (s *serverAPI) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.LoginResponse, error) {
-	_, err := s.validateLoginRequest(req)
+	err := s.validateLoginRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -68,6 +68,7 @@ func (s *serverAPI) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.
 		if errors.Is(err, grpcauth.ErrInvalidCreds) {
 			return nil, status.Error(codes.InvalidArgument, "invalid credentials")
 		}
+
 		return nil, status.Error(codes.Internal, "internal login error")
 	}
 
@@ -76,21 +77,4 @@ func (s *serverAPI) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.
 	grpc.SetHeader(ctx, md)
 
 	return &ssov1.LoginResponse{}, nil
-}
-
-func (s *serverAPI) IsAdmin(ctx context.Context, req *ssov1.IsAdminRequest) (*ssov1.IsAdminResponse, error) {
-	_, err := s.validateIsAdminRequest(req)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	isAdmin, err := s.auth.IsAdmin(ctx, req.GetUserId())
-	if err != nil {
-		if errors.Is(err, grpcauth.ErrUserNotFound) {
-			return nil, status.Error(codes.NotFound, "user not found")
-		}
-		return nil, status.Error(codes.Internal, "internal isAdmin error")
-	}
-
-	return &ssov1.IsAdminResponse{IsAdmin: isAdmin}, nil
 }
