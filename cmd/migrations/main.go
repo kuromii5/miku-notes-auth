@@ -8,29 +8,28 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	config "github.com/kuromii5/sso-auth/internal/cfg"
 )
 
 func main() {
-	var dbHost, dbPort, dbUser, dbPassword, dbName, migrationsPath, migrationsTable string
+	// read config file
+	cfg := config.LoadForMigrations()
 
-	flag.StringVar(&dbHost, "db-host", "localhost", "Database host")
-	flag.StringVar(&dbPort, "db-port", "5432", "Database port")
-	flag.StringVar(&dbUser, "db-user", "postgres", "Database user")
-	flag.StringVar(&dbPassword, "db-password", "", "Database password")
-	flag.StringVar(&dbName, "db-name", "sso", "Database name")
-	flag.StringVar(&migrationsPath, "migrations-path", "", "Path to migrations")
+	var migrationsTable string
 	flag.StringVar(&migrationsTable, "migrations-table", "migrations", "Name of migrations table")
 	flag.Parse()
 
-	if dbHost == "" || dbPort == "" || dbUser == "" || dbPassword == "" || dbName == "" || migrationsPath == "" {
-		log.Fatal("All database and migration path flags must be provided")
-	}
-
 	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&x-migrations-table=%s",
-		dbUser, dbPassword, dbHost, dbPort, dbName, migrationsTable)
+		cfg.User,
+		cfg.Password,
+		cfg.Host,
+		fmt.Sprint(cfg.Port),
+		cfg.DBName,
+		migrationsTable,
+	)
 
 	m, err := migrate.New(
-		"file://"+migrationsPath,
+		"file://migrations/",
 		dbURL,
 	)
 	if err != nil {

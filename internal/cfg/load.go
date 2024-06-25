@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/joho/godotenv"
 )
 
 // TokenTTL - Token time-to-live
@@ -34,14 +35,7 @@ type grpcConfig struct {
 }
 
 func MustLoad() *Config {
-	path := fetchConfigPath()
-	if path == "" {
-		panic("config path is empty.")
-	}
-
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		panic("config file doesn't exist" + path)
-	}
+	path := checkPath()
 
 	var cfg Config
 	if err := cleanenv.ReadConfig(path, &cfg); err != nil {
@@ -51,14 +45,49 @@ func MustLoad() *Config {
 	return &cfg
 }
 
+func LoadForMigrations() *PostgresCfg {
+	path := checkPath()
+
+	// Define a struct that contains only the `postgres` field
+	var config struct {
+		Postgres PostgresCfg `yaml:"postgres"`
+	}
+
+	if err := cleanenv.ReadConfig(path, &config); err != nil {
+		fmt.Println(err)
+		panic("error reading config for postgres")
+	}
+
+	return &config.Postgres
+}
+
+func checkPath() string {
+	path := fetchConfigPath()
+	if path == "" {
+		panic("config path is empty.")
+	}
+
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		panic("config file doesn't exist" + path)
+	}
+
+	return path
+}
+
 func fetchConfigPath() string {
 	var result string
+
+	// Load environment variables from .env file
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Error loading .env file")
+	}
 
 	flag.StringVar(&result, "config", "", "path to cfg file")
 	flag.Parse()
 
 	if result == "" {
-		os.Getenv("CONFIG_PATH")
+		result = os.Getenv("CONFIG_PATH")
 	}
 
 	return result

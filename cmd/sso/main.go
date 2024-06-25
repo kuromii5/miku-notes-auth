@@ -21,7 +21,7 @@ func main() {
 	// read config file
 	cfg := config.MustLoad()
 
-	// make connection string to postgres
+	// make connection string for postgres
 	connStr := cfg.Postgres.ConnString()
 
 	// setup logger for logs

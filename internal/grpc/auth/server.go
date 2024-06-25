@@ -64,6 +64,9 @@ func (s *serverAPI) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.
 	}
 
 	token, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
+
+	// TODO: add
+
 	if err != nil {
 		if errors.Is(err, grpcauth.ErrInvalidCreds) {
 			return nil, status.Error(codes.InvalidArgument, "invalid credentials")

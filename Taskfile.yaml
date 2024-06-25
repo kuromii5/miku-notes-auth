@@ -8,6 +8,10 @@ tasks:
     desc: "Run application with defined config"  
     cmds:
       - go run cmd/sso/main.go --config="./config/local.yaml"
+  migrate:
+    desc: "Making migrations in your postgres database"
+    cmds:
+      - go run cmd/migrations/main.go --migrations-table="migrations"
   generate:
     aliases:
       - gen  
