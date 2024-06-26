@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/go-playground/validator/v10"
-	ssov1 "github.com/kuromii5/proto-auth/gen/go/sso"
+	ssov2 "github.com/kuromii5/sso-auth/generated"
 )
 
 var (
@@ -20,7 +20,7 @@ type RegisterRequest struct {
 	Password string `validate:"required,min=8,max=64"`
 }
 
-func (s *serverAPI) validateRegisterRequest(req *ssov1.RegisterRequest) error {
+func (s *serverAPI) validateRegisterRequest(req *ssov2.RegisterRequest) error {
 	v := RegisterRequest{
 		Email:    req.GetEmail(),
 		Password: req.GetPassword(),
@@ -64,7 +64,7 @@ type LoginRequest struct {
 	Password string `validate:"required"`
 }
 
-func (s *serverAPI) validateLoginRequest(req *ssov1.LoginRequest) error {
+func (s *serverAPI) validateLoginRequest(req *ssov2.LoginRequest) error {
 	v := LoginRequest{
 		Email:    req.GetEmail(),
 		Password: req.GetPassword(),

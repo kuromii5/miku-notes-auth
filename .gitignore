@@ -1,2 +1,2 @@
-./config/local.yaml
-.env
+./config/*
+./generated

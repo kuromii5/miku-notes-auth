@@ -15,10 +15,5 @@ func NewJWT(user models.User, expires time.Duration, secret string) (string, err
 	claims["email"] = user.Email
 	claims["exp"] = time.Now().Add(expires).Unix()
 
-	tokenString, err := token.SignedString([]byte(secret))
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
+	return token.SignedString([]byte(secret))
 }

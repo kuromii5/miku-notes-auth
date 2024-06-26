@@ -6,7 +6,7 @@ import (
 
 	grpcapp "github.com/kuromii5/sso-auth/internal/app/grpc"
 	postgres "github.com/kuromii5/sso-auth/internal/db"
-	grpcauth "github.com/kuromii5/sso-auth/internal/services/grpcauth"
+	"github.com/kuromii5/sso-auth/internal/service"
 )
 
 type App struct {
@@ -25,7 +25,7 @@ func New(
 		panic(err)
 	}
 
-	authService := grpcauth.New(log, db, db, secret, tokenTTL)
+	authService := service.New(log, db, db, secret, tokenTTL)
 	app := grpcapp.New(log, port, authService)
 
 	return &App{Server: app}

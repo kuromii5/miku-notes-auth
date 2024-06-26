@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"github.com/go-playground/validator/v10"
-	ssov1 "github.com/kuromii5/proto-auth/gen/go/sso"
-	grpcauth "github.com/kuromii5/sso-auth/internal/services/grpcauth"
+	ssov2 "github.com/kuromii5/sso-auth/generated"
+	"github.com/kuromii5/sso-auth/internal/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -14,7 +14,7 @@ import (
 )
 
 type serverAPI struct {
-	ssov1.UnimplementedAuthServer
+	ssov2.UnimplementedAuthServer
 	validate *validator.Validate
 	auth     Auth
 }
@@ -26,10 +26,10 @@ type Auth interface {
 
 func Register(gRPC *grpc.Server, auth Auth) {
 	validate := validator.New()
-	ssov1.RegisterAuthServer(gRPC, &serverAPI{auth: auth, validate: validate})
+	ssov2.RegisterAuthServer(gRPC, &serverAPI{auth: auth, validate: validate})
 }
 
-func (s *serverAPI) Register(ctx context.Context, req *ssov1.RegisterRequest) (*ssov1.RegisterResponse, error) {
+func (s *serverAPI) Register(ctx context.Context, req *ssov2.RegisterRequest) (*ssov2.RegisterResponse, error) {
 	err := s.validateRegisterRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -37,7 +37,7 @@ func (s *serverAPI) Register(ctx context.Context, req *ssov1.RegisterRequest) (*
 
 	_, err = s.auth.RegisterNewUser(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
-		if errors.Is(err, grpcauth.ErrUserExists) {
+		if errors.Is(err, service.ErrUserExists) {
 			return nil, status.Error(codes.AlreadyExists, "user already exists")
 		}
 
@@ -45,19 +45,17 @@ func (s *serverAPI) Register(ctx context.Context, req *ssov1.RegisterRequest) (*
 	}
 
 	// automatically log in after register
-	token, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
+	accessToken, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
-		if errors.Is(err, grpcauth.ErrInvalidCreds) {
-			return nil, status.Error(codes.InvalidArgument, "invalid credentials")
-		}
-
 		return nil, status.Error(codes.Internal, "internal login error")
 	}
 
-	return &ssov1.RegisterResponse{Token: token}, nil
+	// TODO: make a refresh token
+
+	return &ssov2.RegisterResponse{Token: accessToken}, nil
 }
 
-func (s *serverAPI) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.LoginResponse, error) {
+func (s *serverAPI) Login(ctx context.Context, req *ssov2.LoginRequest) (*ssov2.LoginResponse, error) {
 	err := s.validateLoginRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -68,7 +66,7 @@ func (s *serverAPI) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.
 	// TODO: add
 
 	if err != nil {
-		if errors.Is(err, grpcauth.ErrInvalidCreds) {
+		if errors.Is(err, service.ErrInvalidCreds) {
 			return nil, status.Error(codes.InvalidArgument, "invalid credentials")
 		}
 
@@ -79,5 +77,5 @@ func (s *serverAPI) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.
 	md := metadata.Pairs("authorization", "Bearer "+token)
 	grpc.SetHeader(ctx, md)
 
-	return &ssov1.LoginResponse{}, nil
+	return &ssov2.LoginResponse{}, nil
 }

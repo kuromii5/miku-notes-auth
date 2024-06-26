@@ -1,4 +1,4 @@
-package grpcauth
+package service
 
 import (
 	"context"
@@ -8,9 +8,9 @@ import (
 	"time"
 
 	postgres "github.com/kuromii5/sso-auth/internal/db"
-	"github.com/kuromii5/sso-auth/internal/lib/jwt"
-	l "github.com/kuromii5/sso-auth/internal/lib/logger/err"
 	"github.com/kuromii5/sso-auth/internal/models"
+	"github.com/kuromii5/sso-auth/pkg/jwt"
+	l "github.com/kuromii5/sso-auth/pkg/logger/err"
 	"golang.org/x/crypto/bcrypt"
 )
 

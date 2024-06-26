@@ -8,7 +8,7 @@ import (
 
 	"github.com/kuromii5/sso-auth/internal/app"
 	config "github.com/kuromii5/sso-auth/internal/cfg"
-	"github.com/kuromii5/sso-auth/internal/lib/logger/handler"
+	"github.com/kuromii5/sso-auth/pkg/logger/handler"
 )
 
 const (

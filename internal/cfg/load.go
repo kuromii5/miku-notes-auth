@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/joho/godotenv"
 )
 
 // TokenTTL - Token time-to-live
@@ -77,18 +76,8 @@ func checkPath() string {
 func fetchConfigPath() string {
 	var result string
 
-	// Load environment variables from .env file
-	err := godotenv.Load()
-	if err != nil {
-		fmt.Println("Error loading .env file")
-	}
-
 	flag.StringVar(&result, "config", "", "path to cfg file")
 	flag.Parse()
-
-	if result == "" {
-		result = os.Getenv("CONFIG_PATH")
-	}
 
 	return result
 }
