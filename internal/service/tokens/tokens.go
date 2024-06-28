@@ -32,13 +32,13 @@ type TokenManager struct {
 
 // Redis methods that are being used here
 type RefreshTokenSetter interface {
-	Set(ctx context.Context, userID int32, token string, expires time.Duration) error
+	Set(ctx context.Context, userID int32, fingerprint, token string, expires time.Duration) error
 }
 type RefreshTokenDeleter interface {
-	Delete(ctx context.Context, userID int32, token string) error
+	Delete(ctx context.Context, userID int32, fingerprint string) error
 }
 type UserGetter interface {
-	UserID(ctx context.Context, token string) (string, error)
+	UserID(ctx context.Context, token, fingerprint string) (string, error)
 }
 
 func New(
@@ -79,7 +79,7 @@ func (t *TokenManager) NewAccessToken(_ context.Context, userID int32) (string, 
 	return token, nil
 }
 
-func (t *TokenManager) NewRefreshToken(ctx context.Context, userID int32) (string, error) {
+func (t *TokenManager) NewRefreshToken(ctx context.Context, userID int32, fingerprint string) (string, error) {
 	const f = "tokens.NewRefreshToken"
 
 	log := t.log.With(slog.String("func", f))
@@ -97,7 +97,7 @@ func (t *TokenManager) NewRefreshToken(ctx context.Context, userID int32) (strin
 	refreshToken := base64.URLEncoding.EncodeToString(b)
 
 	// save token
-	err = t.refreshTokenSetter.Set(ctx, userID, refreshToken, t.refreshTTL)
+	err = t.refreshTokenSetter.Set(ctx, userID, fingerprint, refreshToken, t.refreshTTL)
 	if err != nil {
 		log.Error("failed to save refresh token", l.Err(err))
 
@@ -109,13 +109,13 @@ func (t *TokenManager) NewRefreshToken(ctx context.Context, userID int32) (strin
 	return refreshToken, nil
 }
 
-func (t *TokenManager) ValidateRefreshToken(ctx context.Context, token string) (int32, error) {
+func (t *TokenManager) ValidateRefreshToken(ctx context.Context, token, fingerprint string) (int32, error) {
 	const f = "tokens.ValidateRefreshToken"
 
 	log := t.log.With(slog.String("func", f))
 	log.Info("validating given refresh token", slog.String("refresh_token", token))
 
-	userIDStr, err := t.userGetter.UserID(ctx, token)
+	userIDStr, err := t.userGetter.UserID(ctx, token, fingerprint)
 	if err != nil {
 		log.Error("failed to retrieve user ID for refresh token", l.Err(err))
 
@@ -176,4 +176,13 @@ func (t *TokenManager) ValidateAccessToken(ctx context.Context, token string) (i
 	}
 
 	return int32(userID), nil
+}
+
+func (t *TokenManager) Delete(ctx context.Context, userID int32, fingerprint string) error {
+	const f = "tokenManager.Delete"
+
+	log := t.log.With(slog.String("func", f))
+	log.Info("Deleting refresh tokens for user", slog.Int("user_id", int(userID)))
+
+	return t.refreshTokenDeleter.Delete(ctx, userID, fingerprint)
 }

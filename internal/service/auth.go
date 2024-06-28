@@ -48,11 +48,7 @@ func New(
 	}
 }
 
-func (a *Auth) Register(
-	ctx context.Context,
-	email string,
-	password string,
-) (int32, error) {
+func (a *Auth) Register(ctx context.Context, email, password string) (int32, error) {
 	const f = "auth.Register"
 
 	log := a.log.With(slog.String("func", f))
@@ -69,6 +65,7 @@ func (a *Auth) Register(
 	if err != nil {
 		if errors.Is(err, postgres.ErrUserExists) {
 			a.log.Warn("user already exists", l.Err(err))
+
 			return 0, fmt.Errorf("%s:%w", f, ErrUserExists)
 		}
 
@@ -81,11 +78,7 @@ func (a *Auth) Register(
 	return id, nil
 }
 
-func (a *Auth) Login(
-	ctx context.Context,
-	email string,
-	password string,
-) (models.TokenPair, error) {
+func (a *Auth) Login(ctx context.Context, email, password, fingerprint string) (models.TokenPair, error) {
 	const f = "auth.Login"
 
 	log := a.log.With(slog.String("func", f))
@@ -96,6 +89,7 @@ func (a *Auth) Login(
 	if err != nil {
 		if errors.Is(err, postgres.ErrUserNotFound) {
 			a.log.Warn("user not found", l.Err(err))
+
 			return models.TokenPair{}, fmt.Errorf("%s:%w", f, ErrInvalidCreds)
 		}
 
@@ -119,7 +113,7 @@ func (a *Auth) Login(
 	}
 
 	// generate new refresh token
-	refreshToken, err := a.tokenManager.NewRefreshToken(ctx, user.ID)
+	refreshToken, err := a.tokenManager.NewRefreshToken(ctx, user.ID, fingerprint)
 	if err != nil {
 		a.log.Error("failed to generate refresh token", l.Err(err))
 
@@ -134,14 +128,14 @@ func (a *Auth) Login(
 	}, nil
 }
 
-func (a *Auth) GetAccessToken(ctx context.Context, refreshToken string) (string, error) {
+func (a *Auth) GetAccessToken(ctx context.Context, refreshToken, fingerprint string) (string, error) {
 	const f = "service.GetAccessToken"
 
 	log := a.log.With(slog.String("func", f))
 	log.Info("attempting to generate new access token using refresh token")
 
 	// Validate the refresh token
-	userID, err := a.tokenManager.ValidateRefreshToken(ctx, refreshToken)
+	userID, err := a.tokenManager.ValidateRefreshToken(ctx, refreshToken, fingerprint)
 	if err != nil {
 		log.Error("failed to validate refresh token", l.Err(err))
 
@@ -178,4 +172,29 @@ func (a *Auth) ValidateAccessToken(ctx context.Context, token string) (int32, er
 	log.Info("access token validated successfully", slog.Int("user_id", int(userID)))
 
 	return userID, nil
+}
+
+func (a *Auth) Logout(ctx context.Context, accessToken, fingerprint string) error {
+	const f = "service.Logout"
+
+	log := a.log.With(slog.String("func", f))
+	log.Info("logging out user")
+
+	// Validate the access token to get user id
+	userID, err := a.tokenManager.ValidateAccessToken(ctx, accessToken)
+	if err != nil {
+		log.Warn("failed to validate access token", l.Err(err))
+
+		return fmt.Errorf("%s:%w", f, err)
+	}
+
+	if err = a.tokenManager.Delete(ctx, userID, fingerprint); err != nil {
+		log.Error("internal error", l.Err(err))
+
+		return fmt.Errorf("%s:%w", f, err)
+	}
+
+	log.Info("successfully logged out user", slog.Int("user_id", int(userID)))
+
+	return nil
 }

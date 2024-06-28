@@ -21,10 +21,11 @@ type serverAPI struct {
 }
 
 type Auth interface {
-	Login(ctx context.Context, email string, password string) (models.TokenPair, error)
-	Register(ctx context.Context, email string, password string) (int32, error)
-	GetAccessToken(ctx context.Context, refreshToken string) (string, error)
+	Register(ctx context.Context, email, password string) (int32, error)
+	Login(ctx context.Context, email, password, fingerprint string) (models.TokenPair, error)
+	GetAccessToken(ctx context.Context, refreshToken, fingerprint string) (string, error)
 	ValidateAccessToken(ctx context.Context, token string) (int32, error)
+	Logout(ctx context.Context, accessToken, fingerprint string) error
 }
 
 func RegisterServer(gRPC *grpc.Server, auth Auth, connectionToken string) {
@@ -74,7 +75,7 @@ func (s *serverAPI) Register(ctx context.Context, req *sso.RegisterRequest) (*ss
 	}
 
 	// automatically log in after register
-	tokens, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
+	tokens, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword(), req.GetFingerprint())
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal login error")
 	}
@@ -98,7 +99,7 @@ func (s *serverAPI) Login(ctx context.Context, req *sso.LoginRequest) (*sso.Auth
 	}
 
 	// get the pair of tokens: access and refresh
-	tokens, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
+	tokens, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword(), req.GetFingerprint())
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCreds) {
 			return nil, status.Error(codes.InvalidArgument, "invalid credentials")
@@ -120,7 +121,7 @@ func (s *serverAPI) GetAccessToken(ctx context.Context, req *sso.GetATRequest) (
 	}
 
 	// get the access token
-	accessToken, err := s.auth.GetAccessToken(ctx, req.GetRefreshToken())
+	accessToken, err := s.auth.GetAccessToken(ctx, req.GetRefreshToken(), req.GetFingerprint())
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate access token")
 	}
@@ -145,4 +146,18 @@ func (s *serverAPI) ValidateAccessToken(ctx context.Context, req *sso.ValidateAT
 	return &sso.ValidateATResponse{
 		UserId: userID,
 	}, nil
+}
+
+func (s *serverAPI) Logout(ctx context.Context, req *sso.LogoutRequest) (*sso.LogoutResponse, error) {
+	// validate the bearer token
+	if err := s.validateBearerToken(ctx); err != nil {
+		return nil, err
+	}
+
+	// log out
+	if err := s.auth.Logout(ctx, req.GetAccessToken(), req.GetFingerprint()); err != nil {
+		return nil, status.Error(codes.Internal, "failed to log out")
+	}
+
+	return &sso.LogoutResponse{}, nil
 }
