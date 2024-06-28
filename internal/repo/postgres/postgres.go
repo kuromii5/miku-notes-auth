@@ -31,22 +31,22 @@ func New(dbPath string) (*DB, error) {
 	return &DB{db: db}, nil
 }
 
-func (d *DB) SaveUser(ctx context.Context, email string, passwordHash []byte) (int64, error) {
+func (d *DB) SaveUser(ctx context.Context, email string, passwordHash []byte) (int32, error) {
 	const f = "postgres.SaveUser"
 
 	query := "INSERT INTO users (email, pass_hash) VALUES ($1, $2) RETURNING id"
 
-	var userID int64
+	var userID int32
 	err := d.db.QueryRowContext(ctx, query, email, passwordHash).Scan(&userID)
 	if err != nil {
 		var pgErr *pq.Error
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" { // Unique violation
-				return 0, fmt.Errorf("%s: %w", f, ErrUserExists)
+				return 0, fmt.Errorf("%s:%w", f, ErrUserExists)
 			}
 		}
 
-		return 0, fmt.Errorf("%s: %w", f, err)
+		return 0, fmt.Errorf("%s:%w", f, err)
 	}
 
 	return userID, nil
@@ -62,10 +62,10 @@ func (d *DB) User(ctx context.Context, email string) (models.User, error) {
 		Scan(&user.ID, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.User{}, fmt.Errorf("%s: %w", f, ErrUserNotFound)
+			return models.User{}, fmt.Errorf("%s:%w", f, ErrUserNotFound)
 		}
 
-		return models.User{}, fmt.Errorf("%s: %w", f, err)
+		return models.User{}, fmt.Errorf("%s:%w", f, err)
 	}
 
 	return user, nil

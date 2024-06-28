@@ -28,7 +28,7 @@ type Auth struct {
 
 // Postgres DB methods
 type UserSaver interface {
-	SaveUser(ctx context.Context, email string, hash []byte) (int64, error)
+	SaveUser(ctx context.Context, email string, hash []byte) (int32, error)
 }
 type UserProvider interface {
 	User(ctx context.Context, email string) (models.User, error)
@@ -52,7 +52,7 @@ func (a *Auth) Register(
 	ctx context.Context,
 	email string,
 	password string,
-) (int64, error) {
+) (int32, error) {
 	const f = "auth.Register"
 
 	log := a.log.With(slog.String("func", f))
@@ -110,13 +110,15 @@ func (a *Auth) Login(
 		return models.TokenPair{}, fmt.Errorf("%s:%w", f, ErrInvalidCreds)
 	}
 
-	accessToken, err := a.tokenManager.CreateAccessToken(ctx, user.ID)
+	// generate new access token
+	accessToken, err := a.tokenManager.NewAccessToken(ctx, user.ID)
 	if err != nil {
 		a.log.Error("failed to generate jwt access token", l.Err(err))
 
 		return models.TokenPair{}, fmt.Errorf("%s:%w", f, err)
 	}
 
+	// generate new refresh token
 	refreshToken, err := a.tokenManager.NewRefreshToken(ctx, user.ID)
 	if err != nil {
 		a.log.Error("failed to generate refresh token", l.Err(err))
@@ -135,28 +137,45 @@ func (a *Auth) Login(
 func (a *Auth) GetAccessToken(ctx context.Context, refreshToken string) (string, error) {
 	const f = "service.GetAccessToken"
 
+	log := a.log.With(slog.String("func", f))
+	log.Info("attempting to generate new access token using refresh token")
+
 	// Validate the refresh token
 	userID, err := a.tokenManager.ValidateRefreshToken(ctx, refreshToken)
 	if err != nil {
+		log.Error("failed to validate refresh token", l.Err(err))
+
 		return "", fmt.Errorf("%s:%w", f, err)
 	}
 
 	// Generate the access token
-	accessToken, err := a.tokenManager.CreateAccessToken(ctx, userID)
+	accessToken, err := a.tokenManager.NewAccessToken(ctx, userID)
 	if err != nil {
+		log.Error("failed to create access token", l.Err(err))
+
 		return "", fmt.Errorf("%s:%w", f, err)
 	}
+
+	log.Info("successfully generated new access token", slog.Int("user_id", int(userID)))
 
 	return accessToken, nil
 }
 
-func (a *Auth) ValidateAccessToken(ctx context.Context, token string) (int64, error) {
+func (a *Auth) ValidateAccessToken(ctx context.Context, token string) (int32, error) {
 	const f = "service.ValidateAccessToken"
 
+	log := a.log.With(slog.String("func", f))
+	log.Info("validating access token")
+
+	// Validate the access token
 	userID, err := a.tokenManager.ValidateAccessToken(ctx, token)
 	if err != nil {
+		log.Warn("failed to validate access token", l.Err(err))
+
 		return 0, fmt.Errorf("%s:%w", f, err)
 	}
+
+	log.Info("access token validated successfully", slog.Int("user_id", int(userID)))
 
 	return userID, nil
 }

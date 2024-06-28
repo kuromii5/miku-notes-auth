@@ -10,12 +10,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
+	l "github.com/kuromii5/sso-auth/pkg/logger/err"
 )
 
 var (
 	ErrExpiredToken = errors.New("token is expired")
-	ErrInvalidToken = errors.New("")
 )
 
 type TokenManager struct {
@@ -32,10 +32,10 @@ type TokenManager struct {
 
 // Redis methods that are being used here
 type RefreshTokenSetter interface {
-	Set(ctx context.Context, userID int64, token string, expires time.Duration) error
+	Set(ctx context.Context, userID int32, token string, expires time.Duration) error
 }
 type RefreshTokenDeleter interface {
-	Delete(ctx context.Context, userID int64, token string) error
+	Delete(ctx context.Context, userID int32, token string) error
 }
 type UserGetter interface {
 	UserID(ctx context.Context, token string) (string, error)
@@ -60,72 +60,120 @@ func New(
 	}
 }
 
-func (t *TokenManager) CreateAccessToken(_ context.Context, userID int64) (string, error) {
+func (t *TokenManager) NewAccessToken(_ context.Context, userID int32) (string, error) {
+	const f = "tokens.NewAccessToken"
+
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
 		Subject:   fmt.Sprintf("%d", userID),
 		IssuedAt:  time.Now().Unix(),
 		ExpiresAt: time.Now().Add(t.accessTTL).Unix(),
 	})
 
-	return jwtToken.SignedString([]byte(t.secret))
-}
-
-func (t *TokenManager) NewRefreshToken(ctx context.Context, userID int64) (string, error) {
-	b := make([]byte, 32)
-
-	_, err := rand.Read(b)
+	token, err := jwtToken.SignedString([]byte(t.secret))
 	if err != nil {
-		return "", err
+		t.log.Error("failed to sign access token", l.Err(err), slog.Int("user_id", int(userID)))
+
+		return "", fmt.Errorf("%s:%w", f, err)
 	}
 
+	return token, nil
+}
+
+func (t *TokenManager) NewRefreshToken(ctx context.Context, userID int32) (string, error) {
+	const f = "tokens.NewRefreshToken"
+
+	log := t.log.With(slog.String("func", f))
+	log.Info("generating new refresh token", slog.Int("user_id", int(userID)))
+
+	b := make([]byte, 32)
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Error("failed to generate random bytes for refresh token", l.Err(err))
+
+		return "", fmt.Errorf("%s:%w", f, err)
+	}
+
+	// encode token
 	refreshToken := base64.URLEncoding.EncodeToString(b)
 
 	// save token
-	if err = t.refreshTokenSetter.Set(ctx, userID, refreshToken, t.refreshTTL); err != nil {
-		return "", err
+	err = t.refreshTokenSetter.Set(ctx, userID, refreshToken, t.refreshTTL)
+	if err != nil {
+		log.Error("failed to save refresh token", l.Err(err))
+
+		return "", fmt.Errorf("%s:%w", f, err)
 	}
+
+	log.Info("successfully generated and saved refresh token", slog.String("refresh_token", refreshToken))
 
 	return refreshToken, nil
 }
 
-func (t *TokenManager) ValidateRefreshToken(ctx context.Context, token string) (int64, error) {
+func (t *TokenManager) ValidateRefreshToken(ctx context.Context, token string) (int32, error) {
+	const f = "tokens.ValidateRefreshToken"
+
+	log := t.log.With(slog.String("func", f))
+	log.Info("validating given refresh token", slog.String("refresh_token", token))
+
 	userIDStr, err := t.userGetter.UserID(ctx, token)
 	if err != nil {
-		return 0, err
+		log.Error("failed to retrieve user ID for refresh token", l.Err(err))
+
+		return 0, fmt.Errorf("%s:%w", f, err)
 	}
 
-	// convert string to int64
-	id, err := strconv.ParseInt(userIDStr, 10, 64)
+	// convert string to int32
+	id, err := strconv.ParseInt(userIDStr, 10, 32)
 	if err != nil {
-		return 0, err
+		log.Error("failed to parse user ID from string", l.Err(err))
+
+		return 0, fmt.Errorf("%s:%w", f, err)
 	}
 
-	return id, nil
+	log.Info("successfully validated refresh token", slog.Int("user_id", int(id)))
+
+	return int32(id), nil
 }
 
-func (t *TokenManager) ValidateAccessToken(ctx context.Context, token string) (int64, error) {
+func (t *TokenManager) ValidateAccessToken(ctx context.Context, token string) (int32, error) {
+	const f = "tokenManager.ValidateAccessToken"
+
+	log := t.log.With(slog.String("func", f))
+	log.Info("validating given access token", slog.String("access_token", token))
+
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		_, ok := token.Method.(*jwt.SigningMethodHMAC)
 		if !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			err := fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			log.Error("invalid signing method", l.Err(err))
+
+			return nil, fmt.Errorf("%s:%w", f, err)
 		}
 		return []byte(t.secret), nil
 	}
 
 	accessToken, err := jwt.ParseWithClaims(token, &jwt.StandardClaims{}, keyFunc)
 	if err != nil {
-		return 0, fmt.Errorf("invalid token: %w", err)
+		log.Warn("failed to parse access token", l.Err(err))
+
+		return 0, fmt.Errorf("%s:%w", f, err)
 	}
 
 	claims, ok := accessToken.Claims.(*jwt.StandardClaims)
 	if !ok || !accessToken.Valid {
-		return 0, fmt.Errorf("invalid token claims")
+		err := fmt.Errorf("invalid token claims")
+		log.Warn("invalid token claims", l.Err(err))
+
+		return 0, fmt.Errorf("%s:%w", f, err)
 	}
 
+	// convert string to int32
 	userID, err := strconv.ParseInt(claims.Subject, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("invalid user ID in token: %w", err)
+		log.Error("failed to parse user ID", l.Err(err))
+
+		return 0, fmt.Errorf("%s:%w", f, err)
 	}
 
-	return userID, nil
+	return int32(userID), nil
 }

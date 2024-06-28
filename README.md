@@ -34,8 +34,11 @@ postgres: # postgres settings
   port: 5432
   dbname: "my_db"
   sslmode: "disable"
-token_ttl: 15m # access token time-to-live
-secret: "my_secret" # app secret string used in JWT access token
+tokens:
+  access_ttl: 15m
+  refresh_ttl: 720h
+  redis_addr: "127.0.0.1:6379"
+  secret: "my_secret"
 grpc:
   port: 44044 # port for your gRPC server
   timeout: 10h # max duration of time that the request can take
