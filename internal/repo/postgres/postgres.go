@@ -31,10 +31,6 @@ func New(dbPath string) (*DB, error) {
 	return &DB{db: db}, nil
 }
 
-func (d *DB) Close() error {
-	return d.db.Close()
-}
-
 func (d *DB) SaveUser(ctx context.Context, email string, passwordHash []byte) (int64, error) {
 	const f = "postgres.SaveUser"
 

@@ -29,7 +29,15 @@ func main() {
 	log.Info("Starting application", slog.Any("config", cfg))
 
 	// initialize application
-	app := app.New(log, cfg.GRPC.Port, connStr, cfg.JWT_SECRET, cfg.TokenTTL)
+	app := app.New(
+		log,
+		cfg.GRPC.Port,
+		connStr,
+		cfg.Tokens.Secret,
+		cfg.Tokens.RedisAddr,
+		cfg.Tokens.AccessTTL,
+		cfg.Tokens.RefreshTTL,
+	)
 
 	// run the server as goroutine
 	go app.Server.MustRun()

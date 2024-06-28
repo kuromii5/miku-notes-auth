@@ -1,2 +1,2 @@
-./config/*
-./generated
+config
+generated

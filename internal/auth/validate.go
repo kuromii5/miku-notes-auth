@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/go-playground/validator/v10"
-	ssov2 "github.com/kuromii5/sso-auth/generated"
+	sso "github.com/kuromii5/sso-auth/generated"
 )
 
 var (
@@ -20,13 +20,15 @@ type RegisterRequest struct {
 	Password string `validate:"required,min=8,max=64"`
 }
 
-func (s *serverAPI) validateRegisterRequest(req *ssov2.RegisterRequest) error {
+func validateRegisterRequest(req *sso.RegisterRequest) error {
+	validate := validator.New()
+
 	v := RegisterRequest{
 		Email:    req.GetEmail(),
 		Password: req.GetPassword(),
 	}
 
-	if err := s.validate.Struct(v); err != nil {
+	if err := validate.Struct(v); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
 			for _, ve := range validationErrors {
 				switch ve.Field() {
@@ -64,13 +66,15 @@ type LoginRequest struct {
 	Password string `validate:"required"`
 }
 
-func (s *serverAPI) validateLoginRequest(req *ssov2.LoginRequest) error {
+func validateLoginRequest(req *sso.LoginRequest) error {
+	validate := validator.New()
+
 	v := LoginRequest{
 		Email:    req.GetEmail(),
 		Password: req.GetPassword(),
 	}
 
-	if err := s.validate.Struct(v); err != nil {
+	if err := validate.Struct(v); err != nil {
 		return errors.New("invalid credentials")
 	}
 

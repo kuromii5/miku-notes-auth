@@ -4,38 +4,37 @@ import (
 	"context"
 	"errors"
 
-	"github.com/go-playground/validator/v10"
-	ssov2 "github.com/kuromii5/sso-auth/generated"
+	sso "github.com/kuromii5/sso-auth/generated"
+	"github.com/kuromii5/sso-auth/internal/models"
 	"github.com/kuromii5/sso-auth/internal/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
 type serverAPI struct {
-	ssov2.UnimplementedAuthServer
-	validate *validator.Validate
-	auth     Auth
+	sso.UnimplementedAuthServer
+	auth Auth
 }
 
 type Auth interface {
-	Login(ctx context.Context, email string, password string) (string, error)
-	RegisterNewUser(ctx context.Context, email string, password string) (int64, error)
+	Login(ctx context.Context, email string, password string) (models.TokenPair, error)
+	Register(ctx context.Context, email string, password string) (int64, error)
+	GetAccessToken(ctx context.Context, refreshToken string) (string, error)
+	ValidateAccessToken(ctx context.Context, token string) (int64, error)
 }
 
-func Register(gRPC *grpc.Server, auth Auth) {
-	validate := validator.New()
-	ssov2.RegisterAuthServer(gRPC, &serverAPI{auth: auth, validate: validate})
+func RegisterServer(gRPC *grpc.Server, auth Auth) {
+	sso.RegisterAuthServer(gRPC, &serverAPI{auth: auth})
 }
 
-func (s *serverAPI) Register(ctx context.Context, req *ssov2.RegisterRequest) (*ssov2.RegisterResponse, error) {
-	err := s.validateRegisterRequest(req)
+func (s *serverAPI) Register(ctx context.Context, req *sso.RegisterRequest) (*sso.AuthResponse, error) {
+	err := validateRegisterRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	_, err = s.auth.RegisterNewUser(ctx, req.GetEmail(), req.GetPassword())
+	_, err = s.auth.Register(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
 		if errors.Is(err, service.ErrUserExists) {
 			return nil, status.Error(codes.AlreadyExists, "user already exists")
@@ -45,26 +44,25 @@ func (s *serverAPI) Register(ctx context.Context, req *ssov2.RegisterRequest) (*
 	}
 
 	// automatically log in after register
-	accessToken, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
+	tokens, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal login error")
 	}
 
-	// TODO: make a refresh token
-
-	return &ssov2.RegisterResponse{Token: accessToken}, nil
+	return &sso.AuthResponse{
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+	}, nil
 }
 
-func (s *serverAPI) Login(ctx context.Context, req *ssov2.LoginRequest) (*ssov2.LoginResponse, error) {
-	err := s.validateLoginRequest(req)
+func (s *serverAPI) Login(ctx context.Context, req *sso.LoginRequest) (*sso.AuthResponse, error) {
+	err := validateLoginRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	token, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
-
-	// TODO: add
-
+	// get the pair of tokens: access and refresh
+	tokens, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCreds) {
 			return nil, status.Error(codes.InvalidArgument, "invalid credentials")
@@ -73,9 +71,30 @@ func (s *serverAPI) Login(ctx context.Context, req *ssov2.LoginRequest) (*ssov2.
 		return nil, status.Error(codes.Internal, "internal login error")
 	}
 
-	// Set the JWT token in the metadata
-	md := metadata.Pairs("authorization", "Bearer "+token)
-	grpc.SetHeader(ctx, md)
+	return &sso.AuthResponse{
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+	}, nil
+}
 
-	return &ssov2.LoginResponse{}, nil
+func (s *serverAPI) GetAccessToken(ctx context.Context, req *sso.GetATRequest) (*sso.GetATResponse, error) {
+	accessToken, err := s.auth.GetAccessToken(ctx, req.GetRefreshToken())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to generate access token")
+	}
+
+	return &sso.GetATResponse{
+		AccessToken: accessToken,
+	}, nil
+}
+
+func (s *serverAPI) ValidateAccessToken(ctx context.Context, req *sso.ValidateATRequest) (*sso.ValidateATResponse, error) {
+	userID, err := s.auth.ValidateAccessToken(ctx, req.GetAccessToken())
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
+	return &sso.ValidateATResponse{
+		UserId: userID,
+	}, nil
 }

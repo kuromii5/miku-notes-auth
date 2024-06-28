@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
-	postgres "github.com/kuromii5/sso-auth/internal/db"
 	"github.com/kuromii5/sso-auth/internal/models"
-	"github.com/kuromii5/sso-auth/pkg/jwt"
+	"github.com/kuromii5/sso-auth/internal/repo/postgres"
+	"github.com/kuromii5/sso-auth/internal/service/tokens"
+	"github.com/kuromii5/sso-auth/pkg/hasher"
 	l "github.com/kuromii5/sso-auth/pkg/logger/err"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -24,14 +23,13 @@ type Auth struct {
 	log          *slog.Logger
 	userSaver    UserSaver
 	userProvider UserProvider
-	secret       string
-	tokenTTL     time.Duration
+	tokenManager *tokens.TokenManager
 }
 
+// Postgres DB methods
 type UserSaver interface {
 	SaveUser(ctx context.Context, email string, hash []byte) (int64, error)
 }
-
 type UserProvider interface {
 	User(ctx context.Context, email string) (models.User, error)
 }
@@ -40,33 +38,31 @@ func New(
 	log *slog.Logger,
 	userSaver UserSaver,
 	userProvider UserProvider,
-	secret string,
-	tokenTTL time.Duration,
+	tokenManager *tokens.TokenManager,
 ) *Auth {
 	return &Auth{
 		log:          log,
 		userSaver:    userSaver,
 		userProvider: userProvider,
-		secret:       secret,
-		tokenTTL:     tokenTTL,
+		tokenManager: tokenManager,
 	}
 }
 
-func (a *Auth) RegisterNewUser(
+func (a *Auth) Register(
 	ctx context.Context,
 	email string,
 	password string,
 ) (int64, error) {
-	const f = "auth.RegisterNewUser"
+	const f = "auth.Register"
 
 	log := a.log.With(slog.String("func", f))
 	log.Info("registering new user")
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := hasher.HashPassword(password)
 	if err != nil {
 		log.Error("failed to generate password", l.Err(err))
 
-		return 0, fmt.Errorf("%s:%v", f, err)
+		return 0, fmt.Errorf("%s:%w", f, err)
 	}
 
 	id, err := a.userSaver.SaveUser(ctx, email, hash)
@@ -89,37 +85,78 @@ func (a *Auth) Login(
 	ctx context.Context,
 	email string,
 	password string,
-) (string, error) {
+) (models.TokenPair, error) {
 	const f = "auth.Login"
 
 	log := a.log.With(slog.String("func", f))
 	log.Info("trying to log in user")
 
+	// get the user from db
 	user, err := a.userProvider.User(ctx, email)
 	if err != nil {
 		if errors.Is(err, postgres.ErrUserNotFound) {
 			a.log.Warn("user not found", l.Err(err))
-			return "", fmt.Errorf("%s:%w", f, ErrInvalidCreds)
+			return models.TokenPair{}, fmt.Errorf("%s:%w", f, ErrInvalidCreds)
 		}
 
 		a.log.Error("failed to get user", l.Err(err))
-		return "", fmt.Errorf("%s:%w", f, err)
+		return models.TokenPair{}, fmt.Errorf("%s:%w", f, err)
 	}
 
-	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password)); err != nil {
+	// check password
+	if err := hasher.CheckPassword(password, user.PasswordHash); err != nil {
 		a.log.Warn("invalid credentials", l.Err(err))
 
-		return "", fmt.Errorf("%s:%w", f, ErrInvalidCreds)
+		return models.TokenPair{}, fmt.Errorf("%s:%w", f, ErrInvalidCreds)
 	}
 
-	token, err := jwt.NewJWT(user, a.tokenTTL, a.secret)
+	accessToken, err := a.tokenManager.CreateAccessToken(ctx, user.ID)
 	if err != nil {
-		a.log.Error("failed to generate jwt", l.Err(err))
+		a.log.Error("failed to generate jwt access token", l.Err(err))
 
-		return "", fmt.Errorf("%s:%w", f, err)
+		return models.TokenPair{}, fmt.Errorf("%s:%w", f, err)
+	}
+
+	refreshToken, err := a.tokenManager.NewRefreshToken(ctx, user.ID)
+	if err != nil {
+		a.log.Error("failed to generate refresh token", l.Err(err))
+
+		return models.TokenPair{}, fmt.Errorf("%s:%w", f, err)
 	}
 
 	log.Info("user logged in successfully")
 
-	return token, nil
+	return models.TokenPair{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (a *Auth) GetAccessToken(ctx context.Context, refreshToken string) (string, error) {
+	const f = "service.GetAccessToken"
+
+	// Validate the refresh token
+	userID, err := a.tokenManager.ValidateRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return "", fmt.Errorf("%s:%w", f, err)
+	}
+
+	// Generate the access token
+	accessToken, err := a.tokenManager.CreateAccessToken(ctx, userID)
+	if err != nil {
+		return "", fmt.Errorf("%s:%w", f, err)
+	}
+
+	return accessToken, nil
+}
+
+func (a *Auth) ValidateAccessToken(ctx context.Context, token string) (int64, error) {
+	const f = "service.ValidateAccessToken"
+
+	userID, err := a.tokenManager.ValidateAccessToken(ctx, token)
+	if err != nil {
+		return 0, fmt.Errorf("%s:%w", f, err)
+	}
+
+	return userID, nil
 }

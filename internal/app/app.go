@@ -5,8 +5,10 @@ import (
 	"time"
 
 	grpcapp "github.com/kuromii5/sso-auth/internal/app/grpc"
-	postgres "github.com/kuromii5/sso-auth/internal/db"
+	"github.com/kuromii5/sso-auth/internal/repo/postgres"
+	"github.com/kuromii5/sso-auth/internal/repo/redis"
 	"github.com/kuromii5/sso-auth/internal/service"
+	"github.com/kuromii5/sso-auth/internal/service/tokens"
 )
 
 type App struct {
@@ -18,14 +20,21 @@ func New(
 	port int,
 	dbPath string,
 	secret string,
-	tokenTTL time.Duration,
+	redisAddr string,
+	accessTTL time.Duration,
+	refreshTTL time.Duration,
 ) *App {
 	db, err := postgres.New(dbPath)
 	if err != nil {
 		panic(err)
 	}
 
-	authService := service.New(log, db, db, secret, tokenTTL)
+	// define refresh token storage and manager
+	// it's just part of authService
+	tokenStorage := redis.New(redisAddr)
+	tokenManager := tokens.New(log, secret, accessTTL, refreshTTL, tokenStorage, tokenStorage, tokenStorage)
+
+	authService := service.New(log, db, db, tokenManager)
 	app := grpcapp.New(log, port, authService)
 
 	return &App{Server: app}

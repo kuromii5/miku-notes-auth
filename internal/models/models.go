@@ -9,3 +9,8 @@ type User struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
+
+type TokenPair struct {
+	AccessToken  string
+	RefreshToken string
+}
