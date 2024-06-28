@@ -22,17 +22,19 @@ func main() {
 	cfg := config.MustLoad()
 
 	// make connection string for postgres
-	connStr := cfg.Postgres.ConnString()
+	postgresConnStr := cfg.Postgres.ConnString()
 
 	// setup logger for logs
 	log := setupLogger(cfg.Env)
+
 	log.Info("Starting application", slog.Any("config", cfg))
 
 	// initialize application
 	app := app.New(
 		log,
 		cfg.GRPC.Port,
-		connStr,
+		cfg.GRPC.ConnectionToken,
+		postgresConnStr,
 		cfg.Tokens.Secret,
 		cfg.Tokens.RedisAddr,
 		cfg.Tokens.AccessTTL,

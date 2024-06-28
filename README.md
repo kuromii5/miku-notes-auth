@@ -36,12 +36,12 @@ postgres: # postgres settings
   sslmode: "disable"
 tokens:
   access_ttl: 15m
-  refresh_ttl: 720h
-  redis_addr: "127.0.0.1:6379"
-  secret: "my_secret"
+  refresh_ttl: 720h # 30 days
+  redis_addr: "127.0.0.1:6379" # address of redis db which stores refresh tokens
+  secret: "my_secret" # for JWT access tokens
 grpc:
   port: 44044 # port for your gRPC server
-  timeout: 10h # max duration of time that the request can take
+  connection_token: "private_connection_token" # auth token for secure connection between services
 ```
 
 ### Migrations

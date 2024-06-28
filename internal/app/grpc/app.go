@@ -10,20 +10,22 @@ import (
 )
 
 type GRPCApp struct {
-	log    *slog.Logger
-	server *grpc.Server
-	port   int
+	log             *slog.Logger
+	server          *grpc.Server
+	port            int
+	connectionToken string
 }
 
-func New(log *slog.Logger, port int, authGRPC auth.Auth) *GRPCApp {
+func New(log *slog.Logger, port int, connectionToken string, authGRPC auth.Auth) *GRPCApp {
 	server := grpc.NewServer()
 
-	auth.RegisterServer(server, authGRPC)
+	auth.RegisterServer(server, authGRPC, connectionToken)
 
 	return &GRPCApp{
-		log:    log,
-		server: server,
-		port:   port,
+		log:             log,
+		server:          server,
+		port:            port,
+		connectionToken: connectionToken,
 	}
 }
 
@@ -39,6 +41,7 @@ func (a *GRPCApp) run() error {
 		slog.Int("port", a.port),
 		slog.String("func", f),
 		slog.String("addr", l.Addr().String()),
+		slog.String("connection token", a.connectionToken),
 	)
 
 	if err := a.server.Serve(l); err != nil {

@@ -18,6 +18,7 @@ type App struct {
 func New(
 	log *slog.Logger,
 	port int,
+	connToken string,
 	dbPath string,
 	secret string,
 	redisAddr string,
@@ -35,7 +36,7 @@ func New(
 	tokenManager := tokens.New(log, secret, accessTTL, refreshTTL, tokenStorage, tokenStorage, tokenStorage)
 
 	authService := service.New(log, db, db, tokenManager)
-	app := grpcapp.New(log, port, authService)
+	app := grpcapp.New(log, port, connToken, authService)
 
 	return &App{Server: app}
 }

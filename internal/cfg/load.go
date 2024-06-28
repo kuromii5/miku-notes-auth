@@ -35,8 +35,8 @@ type TokensConfig struct {
 }
 
 type GrpcConfig struct {
-	Port    int           `yaml:"port"`
-	Timeout time.Duration `yaml:"timeout"`
+	Port            int    `yaml:"port"`
+	ConnectionToken string `yaml:"connection_token"`
 }
 
 func MustLoad() *Config {
