@@ -17,9 +17,7 @@ type GRPCApp struct {
 }
 
 func New(log *slog.Logger, port int, connectionToken string, authGRPC auth.Auth) *GRPCApp {
-	server := grpc.NewServer()
-
-	auth.RegisterServer(server, authGRPC, connectionToken)
+	server := auth.RegisterServer(authGRPC, connectionToken)
 
 	return &GRPCApp{
 		log:             log,
