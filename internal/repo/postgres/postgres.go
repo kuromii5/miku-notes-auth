@@ -20,10 +20,10 @@ type DB struct {
 	db *sql.DB
 }
 
-func New(dbPath string) (*DB, error) {
+func New(connString string) (*DB, error) {
 	const f = "postgres.NewDB"
 
-	db, err := sql.Open("postgres", dbPath)
+	db, err := sql.Open("postgres", connString)
 	if err != nil {
 		return nil, fmt.Errorf("%s:%w", f, err)
 	}

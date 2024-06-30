@@ -16,7 +16,12 @@ tasks:
   migrate:
     desc: "Making migrations in your postgres database"
     cmds:
-      - go run cmd/migrations/main.go --migrations-table="migrations" --config={{.CONFIG_PATH}}
+      - go run cmd/migrations/main.go --config={{.CONFIG_PATH}}
+
+  clear:
+    desc: "Clears database and Redis cache using config variables"
+    cmds:
+      - go run cmd/clear/main.go --config={{.CONFIG_PATH}}
 
   generate:
     aliases:

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 
@@ -15,17 +14,13 @@ func main() {
 	// read config file
 	cfg := config.LoadForMigrations()
 
-	var migrationsTable string
-	flag.StringVar(&migrationsTable, "migrations-table", "migrations", "Name of migrations table")
-	flag.Parse()
-
 	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&x-migrations-table=%s",
 		cfg.User,
 		cfg.Password,
 		cfg.Host,
 		fmt.Sprint(cfg.Port),
 		cfg.DBName,
-		migrationsTable,
+		"migrations",
 	)
 
 	m, err := migrate.New(
