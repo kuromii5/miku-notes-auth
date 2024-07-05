@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
-	l "github.com/kuromii5/sso-auth/pkg/logger/err"
+	l "github.com/kuromii5/sso-auth/pkg/logger"
 )
 
 var (
@@ -30,7 +30,7 @@ type TokenManager struct {
 	userGetter          UserGetter
 }
 
-// Redis methods that are being used here
+//go:generate mockgen -source=tokens.go -destination=mock/tokens.go
 type RefreshTokenSetter interface {
 	Set(ctx context.Context, userID int32, fingerprint, token string, expires time.Duration) error
 }
@@ -145,7 +145,7 @@ func (t *TokenManager) ValidateAccessToken(ctx context.Context, token string) (i
 		_, ok := token.Method.(*jwt.SigningMethodHMAC)
 		if !ok {
 			err := fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			log.Error("invalid signing method", l.Err(err))
+			log.Error("unexpected signing method", l.Err(err))
 
 			return nil, fmt.Errorf("%s:%w", f, err)
 		}
@@ -168,7 +168,7 @@ func (t *TokenManager) ValidateAccessToken(ctx context.Context, token string) (i
 	}
 
 	// convert string to int32
-	userID, err := strconv.ParseInt(claims.Subject, 10, 64)
+	userID, err := strconv.ParseInt(claims.Subject, 10, 32)
 	if err != nil {
 		log.Error("failed to parse user ID", l.Err(err))
 

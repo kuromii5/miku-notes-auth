@@ -10,7 +10,6 @@ import (
 var (
 	ErrInvalidEmail  = errors.New("invalid email address")
 	ErrShortPassword = errors.New("min password length is 8")
-	ErrLongEmail     = errors.New("max email length is 254")
 	ErrLongPassword  = errors.New("max password length is 64")
 	ErrRequired      = errors.New("this field is required")
 )
@@ -33,10 +32,7 @@ func validateRegisterRequest(req *sso.RegisterRequest) error {
 			for _, ve := range validationErrors {
 				switch ve.Field() {
 				case "Email":
-					if ve.Tag() == "max" {
-						return ErrLongEmail
-					}
-					if ve.Tag() == "email" {
+					if ve.Tag() == "email" || ve.Tag() == "max" {
 						return ErrInvalidEmail
 					}
 					return ErrRequired

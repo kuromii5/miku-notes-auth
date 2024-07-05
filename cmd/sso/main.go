@@ -7,8 +7,8 @@ import (
 	"syscall"
 
 	"github.com/kuromii5/sso-auth/internal/app"
-	config "github.com/kuromii5/sso-auth/internal/cfg"
-	"github.com/kuromii5/sso-auth/pkg/logger/handler"
+	"github.com/kuromii5/sso-auth/internal/config"
+	"github.com/kuromii5/sso-auth/pkg/logger"
 )
 
 const (
@@ -25,7 +25,7 @@ func main() {
 	postgresConnStr := cfg.Postgres.ConnString()
 
 	// setup logger for logs
-	log := setupLogger(cfg.Env)
+	log := logger.New(cfg.Env)
 
 	log.Info("Starting application", slog.Any("config", cfg))
 
@@ -52,22 +52,4 @@ func main() {
 
 	app.Server.Shutdown()
 	log.Info("Server is stopped")
-}
-
-// TODO: refactor this func
-func setupLogger(env string) *slog.Logger {
-	var h *handler.PrettyHandler
-	var levelDebug slog.Level = -4
-	var levelInfo slog.Level = 0
-
-	switch env {
-	case envLocal:
-		h = handler.New(os.Stdout, &levelDebug)
-	case envDev:
-		h = handler.New(os.Stdout, &levelDebug)
-	case envProd:
-		h = handler.New(os.Stdout, &levelInfo)
-	}
-
-	return slog.New(h)
 }

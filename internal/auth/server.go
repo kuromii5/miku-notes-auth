@@ -18,6 +18,7 @@ type serverAPI struct {
 	connectionToken string
 }
 
+//go:generate mockgen -source=server.go -destination=mock/server.go
 type Auth interface {
 	Register(ctx context.Context, email, password string) (int32, error)
 	Login(ctx context.Context, email, password, fingerprint string) (models.TokenPair, error)

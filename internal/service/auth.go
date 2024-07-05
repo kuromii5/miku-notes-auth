@@ -10,7 +10,7 @@ import (
 	"github.com/kuromii5/sso-auth/internal/repo/postgres"
 	"github.com/kuromii5/sso-auth/internal/service/tokens"
 	"github.com/kuromii5/sso-auth/pkg/hasher"
-	l "github.com/kuromii5/sso-auth/pkg/logger/err"
+	l "github.com/kuromii5/sso-auth/pkg/logger"
 )
 
 var (
@@ -26,7 +26,7 @@ type Auth struct {
 	tokenManager *tokens.TokenManager
 }
 
-// Postgres DB methods
+//go:generate mockgen -source=auth.go -destination=mock/auth.go
 type UserSaver interface {
 	SaveUser(ctx context.Context, email string, hash []byte) (int32, error)
 }
