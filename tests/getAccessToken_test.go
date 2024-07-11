@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/brianvoe/gofakeit/v7"
-	sso "github.com/kuromii5/sso-auth/generated"
-	"github.com/kuromii5/sso-auth/tests/suite"
+	sso "github.com/kuromii5/miku-notes-auth/generated"
+	"github.com/kuromii5/miku-notes-auth/tests/suite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

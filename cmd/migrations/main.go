@@ -7,7 +7,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/kuromii5/sso-auth/internal/config"
+	"github.com/kuromii5/miku-notes-auth/internal/config"
 )
 
 func main() {

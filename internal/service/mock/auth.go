@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	models "github.com/kuromii5/sso-auth/internal/models"
+	models "github.com/kuromii5/miku-notes-auth/internal/models"
 )
 
 // MockUserSaver is a mock of UserSaver interface.

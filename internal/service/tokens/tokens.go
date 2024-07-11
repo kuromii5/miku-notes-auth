@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
-	l "github.com/kuromii5/sso-auth/pkg/logger"
+	l "github.com/kuromii5/miku-notes-auth/pkg/logger"
 )
 
 var (

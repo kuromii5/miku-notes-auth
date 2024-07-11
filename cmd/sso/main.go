@@ -6,15 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/kuromii5/sso-auth/internal/app"
-	"github.com/kuromii5/sso-auth/internal/config"
-	"github.com/kuromii5/sso-auth/pkg/logger"
-)
-
-const (
-	envLocal = "local"
-	envProd  = "prod"
-	envDev   = "dev"
+	"github.com/kuromii5/miku-notes-auth/internal/app"
+	"github.com/kuromii5/miku-notes-auth/internal/config"
+	"github.com/kuromii5/miku-notes-auth/pkg/logger"
 )
 
 func main() {

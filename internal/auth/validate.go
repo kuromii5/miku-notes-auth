@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/go-playground/validator/v10"
-	sso "github.com/kuromii5/sso-auth/generated"
+	sso "github.com/kuromii5/miku-notes-auth/generated"
 )
 
 var (

@@ -1,4 +1,4 @@
-module github.com/kuromii5/sso-auth
+module github.com/kuromii5/miku-notes-auth
 
 go 1.22.4
 

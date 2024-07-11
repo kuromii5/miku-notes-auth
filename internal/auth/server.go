@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	sso "github.com/kuromii5/sso-auth/generated"
-	"github.com/kuromii5/sso-auth/internal/models"
-	"github.com/kuromii5/sso-auth/internal/service"
+	sso "github.com/kuromii5/miku-notes-auth/generated"
+	"github.com/kuromii5/miku-notes-auth/internal/models"
+	"github.com/kuromii5/miku-notes-auth/internal/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

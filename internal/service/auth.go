@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/kuromii5/sso-auth/internal/models"
-	"github.com/kuromii5/sso-auth/internal/repo/postgres"
-	"github.com/kuromii5/sso-auth/internal/service/tokens"
-	"github.com/kuromii5/sso-auth/pkg/hasher"
-	l "github.com/kuromii5/sso-auth/pkg/logger"
+	"github.com/kuromii5/miku-notes-auth/internal/models"
+	"github.com/kuromii5/miku-notes-auth/internal/repo/postgres"
+	"github.com/kuromii5/miku-notes-auth/internal/service/tokens"
+	"github.com/kuromii5/miku-notes-auth/pkg/hasher"
+	l "github.com/kuromii5/miku-notes-auth/pkg/logger"
 )
 
 var (

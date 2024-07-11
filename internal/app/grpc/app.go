@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"net"
 
-	"github.com/kuromii5/sso-auth/internal/auth"
+	"github.com/kuromii5/miku-notes-auth/internal/auth"
 	"google.golang.org/grpc"
 )
 

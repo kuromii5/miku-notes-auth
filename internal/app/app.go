@@ -4,11 +4,11 @@ import (
 	"log/slog"
 	"time"
 
-	grpcapp "github.com/kuromii5/sso-auth/internal/app/grpc"
-	"github.com/kuromii5/sso-auth/internal/repo/postgres"
-	"github.com/kuromii5/sso-auth/internal/repo/redis"
-	"github.com/kuromii5/sso-auth/internal/service"
-	"github.com/kuromii5/sso-auth/internal/service/tokens"
+	grpcapp "github.com/kuromii5/miku-notes-auth/internal/app/grpc"
+	"github.com/kuromii5/miku-notes-auth/internal/repo/postgres"
+	"github.com/kuromii5/miku-notes-auth/internal/repo/redis"
+	"github.com/kuromii5/miku-notes-auth/internal/service"
+	"github.com/kuromii5/miku-notes-auth/internal/service/tokens"
 )
 
 type App struct {

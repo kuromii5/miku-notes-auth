@@ -5,8 +5,8 @@ import (
 
 	"log/slog"
 
-	offlog "github.com/kuromii5/sso-auth/pkg/logger/off"
-	prettylog "github.com/kuromii5/sso-auth/pkg/logger/pretty"
+	offlog "github.com/kuromii5/miku-notes-auth/pkg/logger/off"
+	prettylog "github.com/kuromii5/miku-notes-auth/pkg/logger/pretty"
 )
 
 var (

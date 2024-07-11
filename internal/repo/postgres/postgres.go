@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/kuromii5/sso-auth/internal/models"
+	"github.com/kuromii5/miku-notes-auth/internal/models"
 	"github.com/lib/pq"
 )
 
