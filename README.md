@@ -44,6 +44,37 @@ grpc:
   connection_token: "private_connection_token" # auth token for secure connection between services
 ```
 
+### OR
+
+**.env:**
+
+```dotenv
+# ENVIRONMENT
+
+ENV=local # dev, prod
+
+# POSTGRES SETTINGS
+
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=admin
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DBNAME=miku_notes
+POSTGRES_SSLMODE=disable
+
+# TOKEN MANAGEMENT SETTINGS
+
+TOKENS_ACCESS_TTL=15m
+TOKENS_REFRESH_TTL=720h
+TOKENS_REDIS_ADDR=127.0.0.1:6379
+TOKENS_SECRET=watafuk
+
+# GPRC SETTINGS
+
+GRPC_CONNECTION_TOKEN=private_connection_token
+GRPC_PORT=44044
+```
+
 ### Migrations
 
 Don't forget to create and run Postgres DB named as in config.
@@ -62,7 +93,7 @@ Simply run the app:
 task run CONFIG_PATH="./my_config/local.yaml"
 ```
 
-Or if using cmd:
+Or if using cmd, if you are using .yaml config, you also need to provide config path:
 
 ```bash
 go run cmd/sso/main.go --config="./my_config/local.yaml"
