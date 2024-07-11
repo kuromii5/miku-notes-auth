@@ -50,11 +50,9 @@ grpc:
 
 ```dotenv
 # ENVIRONMENT
-
 ENV=local # dev, prod
 
 # POSTGRES SETTINGS
-
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=admin
 POSTGRES_HOST=localhost
@@ -63,14 +61,12 @@ POSTGRES_DBNAME=miku_notes
 POSTGRES_SSLMODE=disable
 
 # TOKEN MANAGEMENT SETTINGS
-
 TOKENS_ACCESS_TTL=15m
 TOKENS_REFRESH_TTL=720h
 TOKENS_REDIS_ADDR=127.0.0.1:6379
-TOKENS_SECRET=watafuk
+TOKENS_SECRET=my_secret
 
 # GPRC SETTINGS
-
 GRPC_CONNECTION_TOKEN=private_connection_token
 GRPC_PORT=44044
 ```
@@ -79,7 +75,7 @@ GRPC_PORT=44044
 
 Don't forget to create and run Postgres DB named as in config.
 
-Run migrations with `task migrate` or using cmd, for example:
+Run migrations with `task migrate` or using cmd (if using .env - don't specify cfg path), for example:
 
 ```bash
 go run cmd/migrations/main.go --migrations-table="migrations" --config="config/local.yaml"
