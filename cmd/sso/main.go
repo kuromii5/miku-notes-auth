@@ -21,7 +21,7 @@ func main() {
 	// setup logger for logs
 	log := logger.New(cfg.Env)
 
-	log.Info("Starting application", slog.Any("config", cfg))
+	log.Debug("Starting application", slog.Any("config", cfg))
 
 	// initialize application
 	app := app.New(

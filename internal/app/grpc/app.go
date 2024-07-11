@@ -39,7 +39,6 @@ func (a *GRPCApp) run() error {
 		slog.Int("port", a.port),
 		slog.String("func", f),
 		slog.String("addr", l.Addr().String()),
-		slog.String("connection token", a.connectionToken),
 	)
 
 	if err := a.server.Serve(l); err != nil {

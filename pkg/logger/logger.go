@@ -15,6 +15,7 @@ var (
 	prod  = "prod"
 )
 
+// TODO: refactor json handler output
 func New(env string) *slog.Logger {
 	switch env {
 	case local:

@@ -3,7 +3,6 @@ package config
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -92,9 +91,7 @@ func LoadForMigrations() *PostgresConfig {
 
 func checkPath() string {
 	path := fetchConfigPath()
-	if path == "" {
-		log.Println("config path is empty. Looking for .env file...")
-	} else {
+	if path != "" {
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			panic("config file doesn't exist" + path)
 		}
