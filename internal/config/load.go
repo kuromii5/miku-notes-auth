@@ -54,7 +54,7 @@ func ReadConfig(path string) *Config {
 		err = cleanenv.ReadConfig(path, &cfg)
 	} else {
 		if err := godotenv.Load(".env"); err != nil {
-			panic("error loading .env")
+			fmt.Println(".env file not found")
 		}
 
 		err = cleanenv.ReadEnv(&cfg)
@@ -81,6 +81,10 @@ func LoadForMigrations() *PostgresConfig {
 			panic("error reading config")
 		}
 	} else {
+		if err := godotenv.Load(".env"); err != nil {
+			fmt.Println(".env file not found")
+		}
+
 		if err := cleanenv.ReadEnv(&config); err != nil {
 			panic("error reading .env")
 		}
