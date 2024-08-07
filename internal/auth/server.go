@@ -6,6 +6,7 @@ import (
 
 	sso "github.com/kuromii5/miku-notes-auth/generated"
 	"github.com/kuromii5/miku-notes-auth/internal/models"
+	"github.com/kuromii5/miku-notes-auth/internal/repo/redis"
 	"github.com/kuromii5/miku-notes-auth/internal/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -40,13 +41,11 @@ func RegisterServer(auth Auth, connectionToken string) *grpc.Server {
 }
 
 func (s *serverAPI) Register(ctx context.Context, req *sso.RegisterRequest) (*sso.AuthResponse, error) {
-	// validate given data
 	err := validateRegisterRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// register user in the system
 	_, err = s.auth.Register(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
 		if errors.Is(err, service.ErrUserExists) {
@@ -69,7 +68,6 @@ func (s *serverAPI) Register(ctx context.Context, req *sso.RegisterRequest) (*ss
 }
 
 func (s *serverAPI) Login(ctx context.Context, req *sso.LoginRequest) (*sso.AuthResponse, error) {
-	// validate given data
 	err := validateLoginRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -92,11 +90,12 @@ func (s *serverAPI) Login(ctx context.Context, req *sso.LoginRequest) (*sso.Auth
 }
 
 func (s *serverAPI) GetAccessToken(ctx context.Context, req *sso.GetATRequest) (*sso.GetATResponse, error) {
-	// get the access token
 	accessToken, err := s.auth.GetAccessToken(ctx, req.GetRefreshToken(), req.GetFingerprint())
-	if err != nil && err.Error() == "service.GetAccessToken:tokens.ValidateRefreshToken:redis.UserID:refresh token for user not found" {
-		return nil, status.Error(codes.NotFound, "the refresh token does not exist")
-	} else if err != nil {
+	if err != nil {
+		if errors.Is(err, redis.ErrTokenNotFound) {
+			return nil, status.Error(codes.NotFound, "the refresh token does not exist")
+		}
+
 		return nil, status.Error(codes.Internal, "failed to generate access token")
 	}
 
@@ -106,7 +105,6 @@ func (s *serverAPI) GetAccessToken(ctx context.Context, req *sso.GetATRequest) (
 }
 
 func (s *serverAPI) ValidateAccessToken(ctx context.Context, req *sso.ValidateATRequest) (*sso.ValidateATResponse, error) {
-	// validate access token
 	userID, err := s.auth.ValidateAccessToken(ctx, req.GetAccessToken())
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
@@ -118,7 +116,6 @@ func (s *serverAPI) ValidateAccessToken(ctx context.Context, req *sso.ValidateAT
 }
 
 func (s *serverAPI) Logout(ctx context.Context, req *sso.LogoutRequest) (*sso.LogoutResponse, error) {
-	// log out
 	if err := s.auth.Logout(ctx, req.GetAccessToken(), req.GetFingerprint()); err != nil {
 		return nil, status.Error(codes.Internal, "failed to log out")
 	}
