@@ -94,7 +94,9 @@ func (s *serverAPI) Login(ctx context.Context, req *sso.LoginRequest) (*sso.Auth
 func (s *serverAPI) GetAccessToken(ctx context.Context, req *sso.GetATRequest) (*sso.GetATResponse, error) {
 	// get the access token
 	accessToken, err := s.auth.GetAccessToken(ctx, req.GetRefreshToken(), req.GetFingerprint())
-	if err != nil {
+	if err != nil && err.Error() == "service.GetAccessToken:tokens.ValidateRefreshToken:redis.UserID:refresh token for user not found" {
+		return nil, status.Error(codes.NotFound, "the refresh token does not exist")
+	} else if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate access token")
 	}
 
