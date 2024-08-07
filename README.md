@@ -1,13 +1,6 @@
 # ?
 
-This is one out of four parts of [Miku Notes]()
-
-Application parts:
-
-- [Auth service](https://github.com/kuromii5/miku-notes-auth) (this repo)
-- [Data service](https://github.com/kutoru/miku-notes-data)
-- [Gateway service](https://github.com/kutoru/miku-notes-gateway)
-- [Frontend](https://github.com/kinokorain/Miku-notes-frontend)
+This is one out of four parts of [Miku Notes](https://github.com/kutoru/miku-notes)
 
 # How to run
 
